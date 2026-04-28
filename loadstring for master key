@@ -1,40 +1,238 @@
--- [[ CHICKEN HUB - MANUAL GITHUB KEY SYSTEM ]]
--- Developer: Wissam (Converted to GitHub Manual Control)
+-- [[ CHICKENHUB - MANUAL GITHUB KEY SYSTEM ]]
+-- Repo: HayatScripts/masterkey
+-- Updated for Delta/Mobile support
+
+print("--- [CHICKENHUB] Initializing... ---")
 
 local Config = {
-    -- [1] GitHub Manual Database Settings
-    -- REPLACE THIS WITH YOUR "RAW" GITHUB URL:
-    GitHubKeyURL    = "https://raw.githubusercontent.com/HayatScripts/masterkey-keysystem/refs/heads/main/masterkey",
-
-    -- [2] Anti-Bypass / Global Secret Variable
-    Secret          = "Makoftr123", -- Syncs with your main script's protection
-
-    -- [3] Scripts & Links
+    -- [1] YOUR GITHUB LINKS (Updated for your repo)
+    GitHubKeyURL    = "https://raw.githubusercontent.com/HayatScripts/masterkey/main/keys.txt",
     MainScriptURL   = "https://raw.githubusercontent.com/HayatScripts/fake-trade-adm-key-system/refs/heads/main/key%20system",
-    
-    -- [4] Social Media (Set to true to show, false to hide)
-    ShowDiscord     = false,
-    DiscordURL      = "https://discord.gg/kT55J724BK",
 
-    -- [5] File System (Saves the key on the user's device for auto-login)
-    KeyFileName     = "ChickenKey.txt",
-
-    -- [6] Hub Info & Branding
-    HubName         = "ChickenHUb",
-    HubDescription  = "slxzy_101 on Discord", -- Contact for keys
+    -- [2] Anti-Bypass
+    Secret          = "Makoftr123", 
     
-    -- [7] GUI Names
+    -- [3] Device Settings
+    KeyFileName     = "ChickenKeyVer2.txt",
+
+    -- [4] UI Branding
+    HubName         = "ChickenHub Access",
+    HubDescription  = "Master Key System - Contact slxzy_101 for Keys",
+    
+    -- [5] GUI Names
     OldGuiName      = "ChickenHub",
     MainGuiName     = "ChickenHub"
 }
 
 -------------------------------------------------------------------------------
---! CORE VERIFICATION LOGIC (LIVE GITHUB CHECK)
+--! CORE VERIFICATION LOGIC
 -------------------------------------------------------------------------------
 
 local function fetchMasterKeys()
+    print("[CHICKENHUB] Fetching database...")
     local success, result = pcall(function()
-        return game:HttpGet(Config.GitHubKeyURL)
+        -- Adding os.time() prevents GitHub from showing old/cached versions of your keys
+        return game:HttpGet(Config.GitHubKeyURL .. "?t=" .. os.time()) 
+    end)
+    
+    if success then
+        print("[CHICKENHUB] Connected to GitHub.")
+        local keys = {}
+        for line in result:gmatch("[^\r\n]+") do
+            local cleanKey = line:gsub("%s+", "")
+            if cleanKey ~= "" then
+                table.insert(keys, cleanKey)
+            end
+        end
+        return keys
+    else
+        warn("[CHICKENHUB] Error fetching keys: " .. tostring(result))
+        return nil
+    end
+end
+
+local function isKeyInList(inputKey)
+    local masterKeys = fetchMasterKeys()
+    if not masterKeys then return false, "Connection Error" end
+    for _, validKey in ipairs(masterKeys) do
+        if inputKey == validKey then
+            return true, "Success"
+        end
+    end
+    return false, "Invalid or Expired Key"
+end
+
+-------------------------------------------------------------------------------
+--! REVOCATION HEARTBEAT (Auto-Kick if you delete the key from GitHub)
+-------------------------------------------------------------------------------
+local isVerified = false
+
+local function StartSecurityHeartbeat(keyUsed)
+    task.spawn(function()
+        while isVerified do
+            task.wait(60) -- Checks every 60 seconds
+            local stillValid, _ = isKeyInList(keyUsed)
+            if not stillValid then
+                print("[CHICKENHUB] Access Revoked Remotely.")
+                isVerified = false
+                local pGui = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
+                if pGui and pGui:FindFirstChild(Config.MainGuiName) then 
+                    pGui[Config.MainGuiName]:Destroy() 
+                end
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "Access Revoked",
+                    Text = "The owner has disabled this key.",
+                    Duration = 10
+                })
+                break
+            end
+        end
+    end)
+end
+
+-------------------------------------------------------------------------------
+--! SCRIPT EXECUTION
+-------------------------------------------------------------------------------
+
+local function StartMainScript(keyUsed)
+    print("[CHICKENHUB] Access granted. Running main script...")
+    local player = game:GetService("Players").LocalPlayer
+    local pGui = player:WaitForChild("PlayerGui")
+    
+    if pGui:FindFirstChild(Config.OldGuiName) then 
+        pGui[Config.OldGuiName]:Destroy() 
+    end
+    
+    isVerified = true
+    _G[Config.Secret] = true 
+    
+    StartSecurityHeartbeat(keyUsed)
+    
+    task.spawn(function()
+        local success, result = pcall(function()
+            return loadstring(game:HttpGet(Config.MainScriptURL))()
+        end)
+        if not success then
+             warn("[CHICKENHUB] Failed to load main script: " .. tostring(result))
+        end
+    end)
+end
+
+-------------------------------------------------------------------------------
+--! UI CREATION
+-------------------------------------------------------------------------------
+
+local function CreateGUI()
+    print("[CHICKENHUB] Creating GUI...")
+    local player = game:GetService("Players").LocalPlayer
+    local targetParent = player:WaitForChild("PlayerGui", 20)
+    
+    if not targetParent then
+        warn("[CHICKENHUB] Fatal Error: PlayerGui not found!")
+        return
+    end
+
+    if targetParent:FindFirstChild("Manual_Key_System") then targetParent.Manual_Key_System:Destroy() end
+
+    local ScreenGui = Instance.new("ScreenGui", targetParent)
+    ScreenGui.Name = "Manual_Key_System"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.IgnoreGuiInset = true
+
+    local MainFrame = Instance.new("Frame", ScreenGui)
+    MainFrame.Size = UDim2.new(0, 300, 0, 200)
+    MainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Active = true
+    MainFrame.Draggable = true -- Mobile users like to move it
+    Instance.new("UICorner", MainFrame)
+
+    local UIStroke = Instance.new("UIStroke", MainFrame)
+    UIStroke.Color = Color3.fromRGB(0, 150, 255)
+    UIStroke.Thickness = 2
+
+    local Title = Instance.new("TextLabel", MainFrame)
+    Title.Size = UDim2.new(1, 0, 0, 40)
+    Title.Position = UDim2.new(0, 0, 0, 5)
+    Title.Text = Config.HubName
+    Title.TextColor3 = Color3.fromRGB(0, 150, 255)
+    Title.BackgroundTransparency = 1
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 20
+
+    local KeyInput = Instance.new("TextBox", MainFrame)
+    KeyInput.Size = UDim2.new(0.8, 0, 0, 35)
+    KeyInput.Position = UDim2.new(0.1, 0, 0.35, 0)
+    KeyInput.PlaceholderText = "Paste Key Here..."
+    KeyInput.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    KeyInput.TextColor3 = Color3.new(1, 1, 1)
+    KeyInput.Font = Enum.Font.Gotham
+    KeyInput.Text = ""
+    KeyInput.ClearTextOnFocus = false
+    Instance.new("UICorner", KeyInput)
+
+    local VerifyBtn = Instance.new("TextButton", MainFrame)
+    VerifyBtn.Size = UDim2.new(0.8, 0, 0, 35)
+    VerifyBtn.Position = UDim2.new(0.1, 0, 0.6, 0)
+    VerifyBtn.Text = "LOG IN"
+    VerifyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    VerifyBtn.TextColor3 = Color3.new(1, 1, 1)
+    VerifyBtn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", VerifyBtn)
+
+    local Status = Instance.new("TextLabel", MainFrame)
+    Status.Size = UDim2.new(1, 0, 0, 30)
+    Status.Position = UDim2.new(0, 0, 0.8, 5)
+    Status.BackgroundTransparency = 1
+    Status.Text = "Contact slxzy_101 for Keys"
+    Status.TextColor3 = Color3.fromRGB(150, 150, 150)
+    Status.TextSize = 12
+
+    VerifyBtn.MouseButton1Click:Connect(function()
+        local key = KeyInput.Text
+        if key == "" then Status.Text = "Please enter a key!"; return end
+        
+        Status.Text = "Verifying..."
+        Status.TextColor3 = Color3.fromRGB(255, 255, 255)
+        
+        local success, msg = isKeyInList(key)
+        if success then
+            Status.Text = "Access Granted!"
+            Status.TextColor3 = Color3.fromRGB(0, 255, 0)
+            if writefile then writefile(Config.KeyFileName, key) end
+            task.wait(1)
+            ScreenGui:Destroy()
+            StartMainScript(key)
+        else
+            Status.Text = msg
+            Status.TextColor3 = Color3.fromRGB(255, 50, 50)
+        end
+    end)
+
+    -- Auto-Login check for saved key
+    if isfile and isfile(Config.KeyFileName) then
+        local saved = readfile(Config.KeyFileName)
+        if saved ~= "" then
+            Status.Text = "Auto-verifying saved key..."
+            task.spawn(function()
+                local success = isKeyInList(saved)
+                if success then
+                    print("[CHICKENHUB] Auto-login success.")
+                    ScreenGui:Destroy()
+                    StartMainScript(saved)
+                else
+                    print("[CHICKENHUB] Stored key expired.")
+                    if writefile then writefile(Config.KeyFileName, "") end
+                    Status.Text = "Stored Key Expired."
+                end
+            end)
+        end
+    end
+    print("[CHICKENHUB] GUI Ready.")
+end
+
+CreateGUI()        return game:HttpGet(Config.GitHubKeyURL)
     end)
     if success then
         local keys = {}
