@@ -6,7 +6,7 @@ print("--- [CHICKENHUB] Initializing... ---")
 
 local Config = {
     -- [1] YOUR GITHUB LINKS (Updated for your repo)
-    GitHubKeyURL    = "https://raw.githubusercontent.com/HayatScripts/masterkey/main/keys.txt",
+    GitHubKeyURL    = "https://raw.githubusercontent.com/HayatScripts/key-list/refs/heads/main/keys.txt",
     MainScriptURL   = "https://raw.githubusercontent.com/HayatScripts/fake-trade-adm-key-system/refs/heads/main/key%20system",
 
     -- [2] Anti-Bypass
