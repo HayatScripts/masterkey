@@ -1,0 +1,241 @@
+-- [[ CHICKEN HUB - MANUAL GITHUB KEY SYSTEM ]]
+-- Developer: Wissam (Converted to GitHub Manual Control)
+
+local Config = {
+    -- [1] GitHub Manual Database Settings
+    -- REPLACE THIS WITH YOUR "RAW" GITHUB URL:
+    GitHubKeyURL    = "https://raw.githubusercontent.com/HayatScripts/masterkey-keysystem/refs/heads/main/masterkey",
+
+    -- [2] Anti-Bypass / Global Secret Variable
+    Secret          = "Makoftr123", -- Syncs with your main script's protection
+
+    -- [3] Scripts & Links
+    MainScriptURL   = "https://raw.githubusercontent.com/HayatScripts/fake-trade-adm-key-system/refs/heads/main/key%20system",
+    
+    -- [4] Social Media (Set to true to show, false to hide)
+    ShowDiscord     = false,
+    DiscordURL      = "https://discord.gg/kT55J724BK",
+
+    -- [5] File System (Saves the key on the user's device for auto-login)
+    KeyFileName     = "ChickenKey.txt",
+
+    -- [6] Hub Info & Branding
+    HubName         = "ChickenHUb",
+    HubDescription  = "slxzy_101 on Discord", -- Contact for keys
+    
+    -- [7] GUI Names
+    OldGuiName      = "ChickenHub",
+    MainGuiName     = "ChickenHub"
+}
+
+-------------------------------------------------------------------------------
+--! CORE VERIFICATION LOGIC (LIVE GITHUB CHECK)
+-------------------------------------------------------------------------------
+
+local function fetchMasterKeys()
+    local success, result = pcall(function()
+        return game:HttpGet(Config.GitHubKeyURL)
+    end)
+    if success then
+        local keys = {}
+        -- Parses the text file line by line
+        for line in result:gmatch("[^\r\n]+") do
+            local cleanKey = line:gsub("%s+", "") -- Remove accidental spaces
+            if cleanKey ~= "" then
+                table.insert(keys, cleanKey)
+            end
+        end
+        return keys
+    end
+    return nil
+end
+
+local function redeemKey(inputKey)
+    local masterKeys = fetchMasterKeys()
+    
+    if not masterKeys then
+        return false, "Error: Could not connect to GitHub"
+    end
+
+    -- Loop through your GitHub list to see if the key exists
+    local found = false
+    for _, validKey in ipairs(masterKeys) do
+        if inputKey == validKey then
+            found = true
+            break
+        end
+    end
+
+    if found then
+        -- Key is valid, save it for next time
+        if writefile then 
+            writefile(Config.KeyFileName, inputKey) 
+        end
+        return true, "Success"
+    else
+        -- Key was either deleted from GitHub or never existed
+        return false, "Invalid or Expired Key"
+    end
+end
+
+-------------------------------------------------------------------------------
+--! SCRIPT EXECUTION
+-------------------------------------------------------------------------------
+
+local function StartMainScript()
+    local player = game:GetService("Players").LocalPlayer
+    local pGui = player:WaitForChild("PlayerGui")
+    
+    -- Close old UI to prevent overlapping
+    if pGui:FindFirstChild(Config.OldGuiName) then 
+        pGui[Config.OldGuiName]:Destroy() 
+    end
+    
+    -- Set secret global variable to unlock the main script
+    _G[Config.Secret] = true 
+    
+    -- Load the main script
+    task.spawn(function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet(Config.MainScriptURL))()
+        end)
+        if not success then
+            warn("Failed to load main script: " .. tostring(err))
+        end
+    end)
+end
+
+-------------------------------------------------------------------------------
+--! UI CREATION (Durable & Responsive)
+-------------------------------------------------------------------------------
+
+local function CreateGUI()
+    local player = game:GetService("Players").LocalPlayer
+    local targetParent = player:WaitForChild("PlayerGui")
+    
+    -- Cleanup existing key GUI
+    if targetParent:FindFirstChild("Chicken_KeySystem") then 
+        targetParent.Chicken_KeySystem:Destroy() 
+    end
+
+    local ScreenGui = Instance.new("ScreenGui", targetParent)
+    ScreenGui.Name = "Chicken_KeySystem"
+    ScreenGui.ResetOnSpawn = false
+
+    local MainFrame = Instance.new("Frame", ScreenGui)
+    MainFrame.Size = UDim2.new(0, 320, 0, 240)
+    MainFrame.Position = UDim2.new(0.5, -160, 0.5, -120)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Active = true
+    MainFrame.Draggable = true 
+    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+    -- Rainbow Stroke Effect
+    local Stroke = Instance.new("UIStroke", MainFrame)
+    Stroke.Thickness = 2
+    task.spawn(function()
+        while task.wait() do
+            local hue = tick() % 4 / 4
+            Stroke.Color = Color3.fromHSV(hue, 0.8, 1)
+        end
+    end)
+
+    local Title = Instance.new("TextLabel", MainFrame)
+    Title.Size = UDim2.new(1, 0, 0, 45)
+    Title.Text = Config.HubName
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.BackgroundTransparency = 1
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 20
+
+    local SubTitle = Instance.new("TextLabel", MainFrame)
+    SubTitle.Size = UDim2.new(1, 0, 0, 20)
+    SubTitle.Position = UDim2.new(0, 0, 0, 40)
+    SubTitle.Text = Config.HubDescription
+    SubTitle.TextColor3 = Color3.fromRGB(180, 180, 180)
+    SubTitle.BackgroundTransparency = 1
+    SubTitle.Font = Enum.Font.Gotham
+    SubTitle.TextSize = 12
+
+    local KeyInput = Instance.new("TextBox", MainFrame)
+    KeyInput.Size = UDim2.new(0.8, 0, 0, 40)
+    KeyInput.Position = UDim2.new(0.1, 0, 0.4, 0)
+    KeyInput.PlaceholderText = "Paste Key Here..."
+    KeyInput.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    KeyInput.TextColor3 = Color3.new(1, 1, 1)
+    KeyInput.Font = Enum.Font.Gotham
+    KeyInput.Text = ""
+    Instance.new("UICorner", KeyInput)
+
+    local VerifyBtn = Instance.new("TextButton", MainFrame)
+    VerifyBtn.Size = UDim2.new(0.8, 0, 0, 40)
+    VerifyBtn.Position = UDim2.new(0.1, 0, 0.65, 0)
+    VerifyBtn.Text = "VERIFY ACCESS"
+    VerifyBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+    VerifyBtn.TextColor3 = Color3.new(1, 1, 1)
+    VerifyBtn.Font = Enum.Font.GothamBold
+    VerifyBtn.TextSize = 14
+    Instance.new("UICorner", VerifyBtn)
+
+    local Status = Instance.new("TextLabel", MainFrame)
+    Status.Size = UDim2.new(1, 0, 0, 30)
+    Status.Position = UDim2.new(0, 0, 0, 210)
+    Status.BackgroundTransparency = 1
+    Status.Text = "Idle"
+    Status.TextColor3 = Color3.fromRGB(150, 150, 150)
+    Status.Font = Enum.Font.Gotham
+    Status.TextSize = 11
+
+    -- Socials Button (Discord)
+    if Config.ShowDiscord then
+        local DiscordBtn = Instance.new("TextButton", MainFrame)
+        DiscordBtn.Size = UDim2.new(0, 100, 0, 20)
+        -- Positioning logic...
+    end
+
+    -- Logic for Button Click
+    VerifyBtn.MouseButton1Click:Connect(function()
+        local input = KeyInput.Text
+        if input == "" then Status.Text = "Please enter a key!"; return end
+        
+        Status.Text = "Checking GitHub Database..."
+        local success, msg = redeemKey(input)
+        
+        if success then
+            Status.Text = "Access Granted! Welcome back."
+            Status.TextColor3 = Color3.fromRGB(0, 255, 100)
+            task.wait(1)
+            ScreenGui:Destroy()
+            StartMainScript()
+        else
+            Status.Text = msg
+            Status.TextColor3 = Color3.fromRGB(255, 50, 50)
+        end
+    end)
+
+    -- [CRITICAL] Live Auto-Login Check
+    -- This ensures that if you delete their key from GitHub, 
+    -- they get rejected even if they have the file saved locally.
+    if isfile and isfile(Config.KeyFileName) then
+        local saved = readfile(Config.KeyFileName)
+        if saved ~= "" then
+            Status.Text = "Verifying saved license..."
+            task.spawn(function()
+                local confirmed = redeemKey(saved)
+                if confirmed then
+                    Status.Text = "Auto-login success!"
+                    task.wait(0.5)
+                    ScreenGui:Destroy()
+                    StartMainScript()
+                else
+                    Status.Text = "Saved key is no longer valid."
+                    Status.TextColor3 = Color3.fromRGB(255, 150, 0)
+                end
+            end)
+        end
+    end
+end
+
+-- Initialize
+CreateGUI()
